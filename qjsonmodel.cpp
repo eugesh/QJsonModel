@@ -112,7 +112,8 @@ QJsonTreeItem* QJsonTreeItem::load(const QJsonValue& value, const QStringList &e
 
     if (value.isObject()) {
         //Get all QJsonValue childs
-        for (QString key : value.toObject().keys()) {
+        auto keys = value.toObject().keys();
+        for (const QString &key : qAsConst(keys)) {
             if (contains(exceptions, key)) {
                 continue;
             }
@@ -125,7 +126,8 @@ QJsonTreeItem* QJsonTreeItem::load(const QJsonValue& value, const QStringList &e
     } else if (value.isArray()) {
         //Get all QJsonValue childs
         int index = 0;
-        for (QJsonValue v : value.toArray()) {
+        auto arr = value.toArray();
+        for (const QJsonValue &v : arr) {
             QJsonTreeItem * child = load(v, exceptions, rootItem);
             child->setKey(QString::number(index));
             child->setType(v.type());

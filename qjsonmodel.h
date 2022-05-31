@@ -267,6 +267,9 @@ class QJsonItem;
 class QJsonTreeItem
 {
 public:
+    enum JsonEditMode {
+        R, W, RW
+    };
     QJsonTreeItem(QJsonTreeItem * parent = nullptr);
     ~QJsonTreeItem();
     void appendChild(QJsonTreeItem * item);
@@ -278,9 +281,12 @@ public:
     void setValue(const QVariant& value);
     void setType(const QJsonValue::Type& type);
     void setDescription(const QString &desc);
+    void setEditMode(const JsonEditMode &editMode);
     QString key() const;
     QVariant value() const;
     QString description() const;
+    JsonEditMode editMode() const;
+
     QJsonValue::Type type() const;
 
     static QJsonTreeItem* load(const QJsonValue& value, const QStringList &exceptions = {}, QJsonTreeItem * parent = nullptr);
@@ -293,6 +299,7 @@ private:
     QVariant mValue;
     QJsonValue::Type mType;
     QString mDescription;
+    JsonEditMode mEditMode = RW;
     QList<QJsonTreeItem*> mChilds;
     QJsonTreeItem * mParent;
 };

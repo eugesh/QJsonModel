@@ -95,6 +95,11 @@ void QJsonTreeItem::setDescription(const QString &desc)
     mDescription = desc;
 }
 
+void QJsonTreeItem::setEditMode(const JsonEditMode &editMode)
+{
+    mEditMode = editMode;
+}
+
 QString QJsonTreeItem::key() const
 {
     return mKey;
@@ -108,6 +113,11 @@ QVariant QJsonTreeItem::value() const
 QString QJsonTreeItem::description() const
 {
     return mDescription;
+}
+
+QJsonTreeItem::JsonEditMode QJsonTreeItem::editMode() const
+{
+    return mEditMode;
 }
 
 QJsonValue::Type QJsonTreeItem::type() const
@@ -186,6 +196,10 @@ QJsonTreeItem* QJsonTreeItem::loadWithDesc(const QJsonValue& value, const QJsonV
     } else {
         rootItem->setValue(value.toVariant());
         rootItem->setType(value.type());
+        auto modeStr = description.toVariant().toMap()["mode2"].toString();
+        QJsonTreeItem::JsonEditMode mode = ! modeStr.contains("r", Qt::CaseInsensitive) ? QJsonTreeItem::W :
+                                           modeStr.contains("w", Qt::CaseInsensitive) ? QJsonTreeItem::RW : QJsonTreeItem::R;
+        rootItem->setEditMode(mode);
         rootItem->setDescription(description.toVariant().toMap()["desc"].toString());
     }
 
@@ -356,7 +370,6 @@ bool QJsonModel::loadJson(const QByteArray &json)
         if (jdoc.isArray()) {
             mRootItem = QJsonTreeItem::load(QJsonValue(jdoc.array()), mExceptions);
             mRootItem->setType(QJsonValue::Array);
-
         } else {
             mRootItem = QJsonTreeItem::load(QJsonValue(jdoc.object()), mExceptions);
             mRootItem->setType(QJsonValue::Object);
@@ -406,6 +419,9 @@ QVariant QJsonModel::data(const QModelIndex &index, int role) const
         if (index.column() == 1)
             return item->value();
     } else if (Qt::EditRole == role) {
+        //if (item->editMode() == QJsonTreeItem::R)
+          //  return QVariant();
+
         if (index.column() == 1) {
             return item->value();
         }
@@ -422,9 +438,12 @@ bool QJsonModel::setData(const QModelIndex &index, const QVariant &value, int ro
     if (Qt::EditRole == role) {
         if (col == 1) {
             QJsonTreeItem *item = static_cast<QJsonTreeItem*>(index.internalPointer());
-                item->setValue(value);
-                emit dataChanged(index, index, {Qt::EditRole});
-                return true;
+            if (item->editMode() == QJsonTreeItem::R)
+                return false;
+
+            item->setValue(value);
+            emit dataChanged(index, index, {Qt::EditRole});
+            return true;
         }
     }
 

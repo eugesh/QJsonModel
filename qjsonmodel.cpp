@@ -85,6 +85,15 @@ void QJsonTreeItem::setValue(const QVariant &value)
     mValue = value;
 }
 
+void QJsonTreeItem::setFieldType(const JsonFieldType &type) {
+    mFieldType = type;
+}
+
+void QJsonTreeItem::setAddress(int addr)
+{
+    mAddress = addr;
+}
+
 void QJsonTreeItem::setType(const QJsonValue::Type &type)
 {
     mType = type;
@@ -118,6 +127,16 @@ QString QJsonTreeItem::description() const
 QJsonTreeItem::JsonEditMode QJsonTreeItem::editMode() const
 {
     return mEditMode;
+}
+
+QJsonTreeItem::JsonFieldType QJsonTreeItem::fieldType() const
+{
+    return mFieldType;
+}
+
+int QJsonTreeItem::address() const
+{
+    return mAddress;
 }
 
 QJsonValue::Type QJsonTreeItem::type() const
@@ -200,10 +219,28 @@ QJsonTreeItem* QJsonTreeItem::loadWithDesc(const QJsonValue& value, const QJsonV
         QJsonTreeItem::JsonEditMode mode = ! modeStr.contains("r", Qt::CaseInsensitive) ? QJsonTreeItem::W :
                                            modeStr.contains("w", Qt::CaseInsensitive) ? QJsonTreeItem::RW : QJsonTreeItem::R;
         rootItem->setEditMode(mode);
+
+        rootItem->setFieldType(fromString(description.toVariant().toMap()["type"].toString()));
+        rootItem->setAddress(description.toVariant().toMap()["addr"].toInt());
         rootItem->setDescription(description.toVariant().toMap()["desc"].toString());
     }
 
     return rootItem;
+}
+
+QJsonTreeItem::JsonFieldType QJsonTreeItem::fromString(const QString &str)
+{
+    if (str.contains("uint", Qt::CaseInsensitive)) {
+        return UINT;
+    } else if (str.contains("int", Qt::CaseInsensitive)) {
+        return INT;
+    } else if (str.contains("float", Qt::CaseInsensitive)) {
+        return FLOAT;
+    } else if (str.contains("str", Qt::CaseInsensitive)) {
+        return STRING;
+    } else if (str.contains("date", Qt::CaseInsensitive)) {
+        return DATE;
+    }
 }
 
 //=========================================================================
@@ -396,6 +433,7 @@ bool QJsonModel::loadJson(const QByteArray& json, const QByteArray& descJson)
         } else {
             mRootItem = QJsonTreeItem::loadWithDesc(QJsonValue(jdoc.object()), QJsonValue(jdocDesc.object()), mExceptions);
             mRootItem->setType(QJsonValue::Object);
+            mStructure.insert(mRootItem->address(), mRootItem->value());
         }
         endResetModel();
         return true;

@@ -270,6 +270,14 @@ public:
     enum JsonEditMode {
         R, W, RW
     };
+    enum JsonFieldType {
+        STRING, INT, UINT, FLOAT, DATE
+    };
+    enum JsonTags {
+        DESC, MODE, DEF, ADDR, SIZE, TYPE
+    };
+    QStringList tagNames = { "desc", "mode", "default", "address", "size", "type" };
+
     QJsonTreeItem(QJsonTreeItem * parent = nullptr);
     ~QJsonTreeItem();
     void appendChild(QJsonTreeItem * item);
@@ -279,18 +287,23 @@ public:
     int row() const;
     void setKey(const QString& key);
     void setValue(const QVariant& value);
+    void setFieldType(const JsonFieldType &type);
+    void setAddress(int addr);
     void setType(const QJsonValue::Type& type);
     void setDescription(const QString &desc);
     void setEditMode(const JsonEditMode &editMode);
     QString key() const;
     QVariant value() const;
     QString description() const;
+    JsonFieldType fieldType() const;
     JsonEditMode editMode() const;
+    int address() const;
 
     QJsonValue::Type type() const;
 
     static QJsonTreeItem* load(const QJsonValue& value, const QStringList &exceptions = {}, QJsonTreeItem * parent = nullptr);
     static QJsonTreeItem* loadWithDesc(const QJsonValue& value, const QJsonValue& description, const QStringList &exceptions = {}, QJsonTreeItem * parent = nullptr);
+    static JsonFieldType fromString(const QString &str);
 
 protected:
 
@@ -300,6 +313,9 @@ private:
     QJsonValue::Type mType;
     QString mDescription;
     JsonEditMode mEditMode = RW;
+    int mLength;
+    JsonFieldType mFieldType = STRING;
+    int mAddress;
     QList<QJsonTreeItem*> mChilds;
     QJsonTreeItem * mParent;
 };
@@ -339,6 +355,8 @@ public:
     //! List of tags to skip during parsing
     void addException(const QStringList &exceptions);
 
+    QByteArray serialize() const;
+
 private:
     QJsonValue genJson(QJsonTreeItem *) const;
     QJsonTreeItem * mRootItem;
@@ -346,6 +364,7 @@ private:
     QStringList mHeaders;
     //! List of exceptions (e.g. comments). Case insensitive, compairs on "contains".
     QStringList mExceptions;
+    QMap<int, QVariant> mStructure; // Address -> value
 };
 
 #endif // QJSONMODEL_H

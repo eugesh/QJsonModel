@@ -90,6 +90,11 @@ void QJsonTreeItem::setType(const QJsonValue::Type &type)
     mType = type;
 }
 
+void QJsonTreeItem::setDescription(const QString &desc)
+{
+    mDescription = desc;
+}
+
 QString QJsonTreeItem::key() const
 {
     return mKey;
@@ -98,6 +103,11 @@ QString QJsonTreeItem::key() const
 QVariant QJsonTreeItem::value() const
 {
     return mValue;
+}
+
+QString QJsonTreeItem::description() const
+{
+    return mDescription;
 }
 
 QJsonValue::Type QJsonTreeItem::type() const
@@ -137,6 +147,46 @@ QJsonTreeItem* QJsonTreeItem::load(const QJsonValue& value, const QStringList &e
     } else {
         rootItem->setValue(value.toVariant());
         rootItem->setType(value.type());
+    }
+
+    return rootItem;
+}
+
+QJsonTreeItem* QJsonTreeItem::loadWithDesc(const QJsonValue& value, const QJsonValue& description, const QStringList &exceptions, QJsonTreeItem * parent)
+{
+    QJsonTreeItem * rootItem = new QJsonTreeItem(parent);
+    rootItem->setKey("root");
+
+    if (value.isObject()) {
+        //Get all QJsonValue childs
+        auto keys = value.toObject().keys();
+        for (const QString &key : qAsConst(keys)) {
+            if (contains(exceptions, key)) {
+                continue;
+            }
+            QJsonValue v = value.toObject().value(key);
+            QJsonValue d = description.toObject().value(key);
+            QJsonTreeItem * child = loadWithDesc(v, d, exceptions, rootItem);
+            child->setKey(key);
+            child->setType(v.type());
+            rootItem->appendChild(child);
+        }
+    } else if (value.isArray()) {
+        //Get all QJsonValue childs
+        int index = 0;
+        for (int i = 0; i < value.toArray().count(); ++i) {
+            QJsonValue v = value.toArray()[i];
+            QJsonValue d = description.toArray()[i];
+            QJsonTreeItem * child = loadWithDesc(v, d, exceptions, rootItem);
+            child->setKey(QString::number(index));
+            child->setType(v.type());
+            rootItem->appendChild(child);
+            ++index;
+        }
+    } else {
+        rootItem->setValue(value.toVariant());
+        rootItem->setType(value.type());
+        rootItem->setDescription(description.toVariant().toMap()["desc"].toString());
     }
 
     return rootItem;
@@ -217,18 +267,23 @@ QByteArray escapedString(const QString &s)
 QJsonModel::QJsonModel(QObject *parent)
     : QAbstractItemModel(parent)
     , mRootItem{new QJsonTreeItem}
+    , mRootDescriptionItem{new QJsonTreeItem}
 {
     mHeaders.append("key");
     mHeaders.append("value");
 }
 
-QJsonModel::QJsonModel(const QString& fileName, QObject *parent)
+QJsonModel::QJsonModel(const QString& fileName, const QString &fileNameDesc, QObject *parent)
     : QAbstractItemModel(parent)
     , mRootItem{new QJsonTreeItem}
 {
     mHeaders.append("key");
     mHeaders.append("value");
-    load(fileName);
+
+    if (fileNameDesc.isEmpty())
+        load(fileName);
+    else
+        load(fileName, fileNameDesc);
 }
 
 QJsonModel::QJsonModel(QIODevice * device, QObject *parent)
@@ -267,9 +322,28 @@ bool QJsonModel::load(const QString &fileName)
     return success;
 }
 
+bool QJsonModel::load(const QString& fileName, const QString descFileName)
+{
+    QFile file(fileName), descFile(descFileName);
+    bool success = false;
+    if (file.open(QIODevice::ReadOnly) && descFile.open(QIODevice::ReadOnly)) {
+        success = load(&file, &descFile);
+        file.close();
+    } else {
+        success = false;
+    }
+
+    return success;
+}
+
 bool QJsonModel::load(QIODevice *device)
 {
     return loadJson(device->readAll());
+}
+
+bool QJsonModel::load(QIODevice * device, QIODevice * deviceDesc)
+{
+    return loadJson(device->readAll(), deviceDesc->readAll());
 }
 
 bool QJsonModel::loadJson(const QByteArray &json)
@@ -295,6 +369,28 @@ bool QJsonModel::loadJson(const QByteArray &json)
     return false;
 }
 
+bool QJsonModel::loadJson(const QByteArray& json, const QByteArray& descJson)
+{
+    auto const& jdoc = QJsonDocument::fromJson(json);
+    auto const& jdocDesc = QJsonDocument::fromJson(descJson);
+
+    if (!jdoc.isNull()) {
+        beginResetModel();
+        delete mRootItem;
+        if (jdoc.isArray()) {
+            mRootItem = QJsonTreeItem::loadWithDesc(QJsonValue(jdoc.array()), QJsonValue(jdocDesc.array()), mExceptions);
+            mRootItem->setType(QJsonValue::Array);
+        } else {
+            mRootItem = QJsonTreeItem::loadWithDesc(QJsonValue(jdoc.object()), QJsonValue(jdocDesc.object()), mExceptions);
+            mRootItem->setType(QJsonValue::Object);
+        }
+        endResetModel();
+        return true;
+    }
+
+    qDebug()<<Q_FUNC_INFO<<"cannot load json";
+    return false;
+}
 
 QVariant QJsonModel::data(const QModelIndex &index, int role) const
 {
@@ -313,6 +409,8 @@ QVariant QJsonModel::data(const QModelIndex &index, int role) const
         if (index.column() == 1) {
             return item->value();
         }
+    } else if (Qt::ToolTipRole == role) {
+        return item->description();
     }
 
     return QVariant();

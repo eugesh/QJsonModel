@@ -277,11 +277,14 @@ public:
     void setKey(const QString& key);
     void setValue(const QVariant& value);
     void setType(const QJsonValue::Type& type);
+    void setDescription(const QString &desc);
     QString key() const;
     QVariant value() const;
+    QString description() const;
     QJsonValue::Type type() const;
 
     static QJsonTreeItem* load(const QJsonValue& value, const QStringList &exceptions = {}, QJsonTreeItem * parent = nullptr);
+    static QJsonTreeItem* loadWithDesc(const QJsonValue& value, const QJsonValue& description, const QStringList &exceptions = {}, QJsonTreeItem * parent = nullptr);
 
 protected:
 
@@ -289,6 +292,7 @@ private:
     QString mKey;
     QVariant mValue;
     QJsonValue::Type mType;
+    QString mDescription;
     QList<QJsonTreeItem*> mChilds;
     QJsonTreeItem * mParent;
 };
@@ -300,13 +304,16 @@ class QJsonModel : public QAbstractItemModel
     Q_OBJECT
 public:
     explicit QJsonModel(QObject *parent = nullptr);
-    QJsonModel(const QString& fileName, QObject *parent = nullptr);
+    QJsonModel(const QString& fileName, const QString& fileNameDesc = "", QObject *parent = nullptr);
     QJsonModel(QIODevice * device, QObject *parent = nullptr);
     QJsonModel(const QByteArray& json, QObject *parent = nullptr);
     ~QJsonModel();
     bool load(const QString& fileName);
+    bool load(const QString& fileName, const QString descFileName);
     bool load(QIODevice * device);
+    bool load(QIODevice * device, QIODevice * deviceDesc);
     bool loadJson(const QByteArray& json);
+    bool loadJson(const QByteArray& json, const QByteArray& descJson);
     QVariant data(const QModelIndex &index, int role) const Q_DECL_OVERRIDE;
     bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) Q_DECL_OVERRIDE;
     QVariant headerData(int section, Qt::Orientation orientation, int role) const Q_DECL_OVERRIDE;
@@ -328,6 +335,7 @@ public:
 private:
     QJsonValue genJson(QJsonTreeItem *) const;
     QJsonTreeItem * mRootItem;
+    QJsonTreeItem * mRootDescriptionItem;
     QStringList mHeaders;
     //! List of exceptions (e.g. comments). Case insensitive, compairs on "contains".
     QStringList mExceptions;

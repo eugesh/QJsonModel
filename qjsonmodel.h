@@ -264,6 +264,12 @@ struct QUtf8BaseTraits
 class QJsonModel;
 class QJsonItem;
 
+static const QStringList tagNames = { "desc", "mode", "default", "address", "size", "type" };
+
+enum JsonTags {
+    DESC, MODE, DEF, ADDR, SIZE, TYPE
+};
+
 class QJsonTreeItem
 {
 public:
@@ -273,10 +279,6 @@ public:
     enum JsonFieldType {
         STRING, INT, UINT, FLOAT, DATE
     };
-    enum JsonTags {
-        DESC, MODE, DEF, ADDR, SIZE, TYPE
-    };
-    QStringList tagNames = { "desc", "mode", "default", "address", "size", "type" };
 
     QJsonTreeItem(QJsonTreeItem * parent = nullptr);
     ~QJsonTreeItem();
@@ -289,6 +291,7 @@ public:
     void setValue(const QVariant& value);
     void setFieldType(const JsonFieldType &type);
     void setAddress(int addr);
+    void setSize(int size);
     void setType(const QJsonValue::Type& type);
     void setDescription(const QString &desc);
     void setEditMode(const JsonEditMode &editMode);
@@ -298,11 +301,15 @@ public:
     JsonFieldType fieldType() const;
     JsonEditMode editMode() const;
     int address() const;
+    int size() const;
+    QMap<QString, QVariant> attributeMap() const;
 
     QJsonValue::Type type() const;
 
     static QJsonTreeItem* load(const QJsonValue& value, const QStringList &exceptions = {}, QJsonTreeItem * parent = nullptr);
-    static QJsonTreeItem* loadWithDesc(const QJsonValue& value, const QJsonValue& description, const QStringList &exceptions = {}, QJsonTreeItem * parent = nullptr);
+    static QJsonTreeItem* loadWithDesc(QMap<QString, QVariant> &fieldValueMap, QMap<int, QString> &mStructureMap, QMap<QString, QMap<QString, QVariant> > &mPassDescriptionMap,
+                                       const QJsonValue& value, const QJsonValue& description,
+                                       const QStringList &exceptions = {}, QJsonTreeItem * parent = nullptr);
     static JsonFieldType fromString(const QString &str);
 
 protected:
@@ -318,6 +325,7 @@ private:
     int mAddress;
     QList<QJsonTreeItem*> mChilds;
     QJsonTreeItem * mParent;
+    QMap<QString, QVariant> mAttrMap; // Attribute -> value
 };
 
 //---------------------------------------------------
@@ -364,7 +372,9 @@ private:
     QStringList mHeaders;
     //! List of exceptions (e.g. comments). Case insensitive, compairs on "contains".
     QStringList mExceptions;
-    QMap<int, QVariant> mStructure; // Address -> value
+    QMap<int, QString> mStructureMap; // Address -> Field name
+    QMap<QString, QVariant> mFieldValueMap; // Field name -> value
+    QMap<QString, QMap<QString, QVariant> > mPassDescriptionMap; // Field name -N-> Attributes -> value
 };
 
 #endif // QJSONMODEL_H

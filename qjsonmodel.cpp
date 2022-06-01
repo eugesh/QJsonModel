@@ -22,6 +22,7 @@
  * SOFTWARE.
  */
 
+#include <iostream>
 #include "qjsonmodel.h"
 #include <QFile>
 #include <QDebug>
@@ -87,11 +88,19 @@ void QJsonTreeItem::setValue(const QVariant &value)
 
 void QJsonTreeItem::setFieldType(const JsonFieldType &type) {
     mFieldType = type;
+    mAttrMap.insert(tagNames[TYPE], type);
 }
 
 void QJsonTreeItem::setAddress(int addr)
 {
     mAddress = addr;
+    mAttrMap.insert(tagNames[ADDR], addr);
+}
+
+void QJsonTreeItem::setSize(int size)
+{
+    mLength = size;
+    mAttrMap.insert(tagNames[SIZE], size);
 }
 
 void QJsonTreeItem::setType(const QJsonValue::Type &type)
@@ -102,6 +111,7 @@ void QJsonTreeItem::setType(const QJsonValue::Type &type)
 void QJsonTreeItem::setDescription(const QString &desc)
 {
     mDescription = desc;
+    mAttrMap.insert(tagNames[DESC], desc);
 }
 
 void QJsonTreeItem::setEditMode(const JsonEditMode &editMode)
@@ -137,6 +147,11 @@ QJsonTreeItem::JsonFieldType QJsonTreeItem::fieldType() const
 int QJsonTreeItem::address() const
 {
     return mAddress;
+}
+
+int QJsonTreeItem::size() const
+{
+    return mLength;
 }
 
 QJsonValue::Type QJsonTreeItem::type() const
@@ -181,7 +196,8 @@ QJsonTreeItem* QJsonTreeItem::load(const QJsonValue& value, const QStringList &e
     return rootItem;
 }
 
-QJsonTreeItem* QJsonTreeItem::loadWithDesc(const QJsonValue& value, const QJsonValue& description, const QStringList &exceptions, QJsonTreeItem * parent)
+QJsonTreeItem* QJsonTreeItem::loadWithDesc(QMap<QString, QVariant> &fieldValueMap, QMap<int, QString> &structureMap, QMap<QString, QMap<QString, QVariant> > &passDescriptionMap,
+                                           const QJsonValue& value, const QJsonValue& description, const QStringList &exceptions, QJsonTreeItem * parent)
 {
     QJsonTreeItem * rootItem = new QJsonTreeItem(parent);
     rootItem->setKey("root");
@@ -195,10 +211,16 @@ QJsonTreeItem* QJsonTreeItem::loadWithDesc(const QJsonValue& value, const QJsonV
             }
             QJsonValue v = value.toObject().value(key);
             QJsonValue d = description.toObject().value(key);
-            QJsonTreeItem * child = loadWithDesc(v, d, exceptions, rootItem);
+            QJsonTreeItem * child = loadWithDesc(fieldValueMap, structureMap, passDescriptionMap, v, d, exceptions, rootItem);
             child->setKey(key);
             child->setType(v.type());
             rootItem->appendChild(child);
+
+            if (!child->attributeMap().isEmpty()) {
+                structureMap.insert(child->address(), key);
+                passDescriptionMap.insert(key, child->attributeMap());
+                fieldValueMap.insert(key, child->value());
+            }
         }
     } else if (value.isArray()) {
         //Get all QJsonValue childs
@@ -206,7 +228,7 @@ QJsonTreeItem* QJsonTreeItem::loadWithDesc(const QJsonValue& value, const QJsonV
         for (int i = 0; i < value.toArray().count(); ++i) {
             QJsonValue v = value.toArray()[i];
             QJsonValue d = description.toArray()[i];
-            QJsonTreeItem * child = loadWithDesc(v, d, exceptions, rootItem);
+            QJsonTreeItem * child = loadWithDesc(fieldValueMap, structureMap, passDescriptionMap, v, d, exceptions, rootItem);
             child->setKey(QString::number(index));
             child->setType(v.type());
             rootItem->appendChild(child);
@@ -221,7 +243,9 @@ QJsonTreeItem* QJsonTreeItem::loadWithDesc(const QJsonValue& value, const QJsonV
         rootItem->setEditMode(mode);
 
         rootItem->setFieldType(fromString(description.toVariant().toMap()["type"].toString()));
-        rootItem->setAddress(description.toVariant().toMap()["addr"].toInt());
+        bool isOk;
+        rootItem->setAddress(description.toVariant().toMap()["addr"].toString().toInt(&isOk, 16));
+        rootItem->setSize(description.toVariant().toMap()["size"].toInt(&isOk));
         rootItem->setDescription(description.toVariant().toMap()["desc"].toString());
     }
 
@@ -241,6 +265,11 @@ QJsonTreeItem::JsonFieldType QJsonTreeItem::fromString(const QString &str)
     } else if (str.contains("date", Qt::CaseInsensitive)) {
         return DATE;
     }
+}
+
+QMap<QString, QVariant> QJsonTreeItem::attributeMap() const
+{
+    return mAttrMap;
 }
 
 //=========================================================================
@@ -428,12 +457,13 @@ bool QJsonModel::loadJson(const QByteArray& json, const QByteArray& descJson)
         beginResetModel();
         delete mRootItem;
         if (jdoc.isArray()) {
-            mRootItem = QJsonTreeItem::loadWithDesc(QJsonValue(jdoc.array()), QJsonValue(jdocDesc.array()), mExceptions);
+            mRootItem = QJsonTreeItem::loadWithDesc(mFieldValueMap, mStructureMap, mPassDescriptionMap, QJsonValue(jdoc.array()), QJsonValue(jdocDesc.array()), mExceptions);
             mRootItem->setType(QJsonValue::Array);
         } else {
-            mRootItem = QJsonTreeItem::loadWithDesc(QJsonValue(jdoc.object()), QJsonValue(jdocDesc.object()), mExceptions);
+            mRootItem = QJsonTreeItem::loadWithDesc(mFieldValueMap, mStructureMap, mPassDescriptionMap, QJsonValue(jdoc.object()), QJsonValue(jdocDesc.object()), mExceptions);
             mRootItem->setType(QJsonValue::Object);
-            mStructure.insert(mRootItem->address(), mRootItem->value());
+            // mStructureMap.insert(mRootItem->address(), mRootItem->key());
+            // mPassDescriptionMap.insert();
         }
         endResetModel();
         return true;
@@ -680,6 +710,48 @@ void QJsonModel::valueToJson(QJsonValue jsonValue, QByteArray &json, int indent,
 void QJsonModel::addException(const QStringList &exceptions)
 {
     mExceptions = exceptions;
+}
+
+QByteArray QJsonModel::serialize() const
+{
+    QByteArray arr;
+
+    for (auto key : mStructureMap.keys()) {
+        const QString field = mStructureMap[key];
+        int address = mPassDescriptionMap[field][tagNames[ADDR]].toInt();
+        int len = mPassDescriptionMap[field][tagNames[SIZE]].toInt();
+        QJsonTreeItem::JsonFieldType fieldType = static_cast<QJsonTreeItem::JsonFieldType>(mPassDescriptionMap[field][tagNames[TYPE]].toInt());
+        QVariant value = mFieldValueMap[field];
+
+        QByteArray tmp;
+        switch(fieldType) {
+        case QJsonTreeItem::STRING:
+            tmp = value.toString().toLatin1();
+            break;
+        case QJsonTreeItem::INT:
+        case QJsonTreeItem::UINT:
+            tmp = QByteArray::number(value.toInt());
+            break;
+        case QJsonTreeItem::FLOAT:
+            tmp = QByteArray::number(value.toDouble());
+            break;
+        case QJsonTreeItem::DATE:
+            break;
+        }
+        if (tmp.size() > len) {
+            qCritical() << "Error: serialization!";
+            return {};
+        }
+        while (tmp.size() < len)
+            tmp.prepend(1, '0');
+        arr.push_back(tmp);
+    }
+
+    qDebug() << arr;
+    qDebug() << QString::fromLatin1(arr).toUtf8();
+    std::cout << QString::fromLatin1(arr).toUtf8().toStdString() << std::endl;
+
+    return arr;
 }
 
 QJsonValue QJsonModel::genJson(QJsonTreeItem * item) const

@@ -277,7 +277,7 @@ public:
         R, W, RW
     };
     enum JsonFieldType {
-        STRING, INT, UINT, FLOAT, DATE
+        STRING, INT, UINT, FLOAT, DATE // DOUBLE
     };
 
     QJsonTreeItem(QJsonTreeItem * parent = nullptr);
@@ -364,6 +364,7 @@ public:
     void addException(const QStringList &exceptions);
 
     QByteArray serialize() const;
+    int64_t serialize(unsigned char *arr) const;
 
 private:
     QJsonValue genJson(QJsonTreeItem *) const;

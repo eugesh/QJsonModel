@@ -35,7 +35,7 @@ void floatToBytes(unsigned char *bytes, T n)
  * @return
  */
 template<typename T>
-void bytesToFloat(T &n, unsigned char *bytes)
+void bytesToFloat(T &n, const unsigned char *bytes)
 {
     memcpy(reinterpret_cast<T*>(&n), bytes, sizeof(T));
 }
@@ -59,7 +59,7 @@ void intToBytes(unsigned char *bytes, T n)
  * @param bytes bytes array
  */
 template<typename T>
-void bytesToInt(T &n, unsigned char *bytes)
+void bytesToInt(T &n, const unsigned char *bytes)
 {
     n = 0;
     for (size_t i = 0; i < sizeof(n); ++i) {

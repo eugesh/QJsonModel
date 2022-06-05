@@ -165,6 +165,16 @@ QJsonValue::Type QJsonTreeItem::type() const
     return mType;
 }
 
+bool QJsonTreeItem::isLeaf() const
+{
+    return mIsLeaf;
+}
+
+void QJsonTreeItem::setAsLeaf()
+{
+    mIsLeaf = true;
+}
+
 QJsonTreeItem* QJsonTreeItem::load(const QJsonValue& value, const QStringList &exceptions, QJsonTreeItem* parent)
 {
     QJsonTreeItem * rootItem = new QJsonTreeItem(parent);
@@ -253,6 +263,7 @@ QJsonTreeItem* QJsonTreeItem::loadWithDesc(QMap<QString, QVariant> &fieldValueMa
         rootItem->setAddress(description.toVariant().toMap()["addr"].toString().toInt(&isOk, 16));
         rootItem->setSize(description.toVariant().toMap()["size"].toInt(&isOk));
         rootItem->setDescription(description.toVariant().toMap()["desc"].toString());
+        rootItem->setAsLeaf();
         // structureMap.insert(rootItem->address(), rootItem->key());
         // passDescriptionMap.insert(rootItem->key(), rootItem->attributeMap());
         // fieldValueMap.insert(rootItem->key(), rootItem->value());
@@ -280,6 +291,108 @@ QMap<QString, QVariant> QJsonTreeItem::attributeMap() const
 {
     return mAttrMap;
 }
+
+
+QByteArray QJsonTreeItem::serialize() const
+{
+    QByteArray tmp;
+    tmp.resize(mLength);
+    switch(mFieldType) {
+    case QJsonTreeItem::STRING:
+        // tmp = value.toString().toLatin1();// toUtf8();
+        tmp = QByteArray::fromStdString(mValue.toString().toStdString());
+        break;
+    case QJsonTreeItem::INT: {
+            int val = mValue.toInt();
+            szn::intToBytes(reinterpret_cast<unsigned char*>(tmp.data()), val);
+        }
+        break;
+    case QJsonTreeItem::UINT: {
+            int val = mValue.toUInt();
+            szn::intToBytes(reinterpret_cast<unsigned char*>(tmp.data()), val);
+        }
+        break;
+    case QJsonTreeItem::FLOAT: {
+            float val = mValue.toFloat();
+            szn::floatToBytes(reinterpret_cast<unsigned char*>(tmp.data()), val);
+        }
+        break;
+    case QJsonTreeItem::DOUBLE: {
+            double val = mValue.toDouble();
+            szn::floatToBytes(reinterpret_cast<unsigned char*>(tmp.data()), val);
+        }
+        break;
+    case QJsonTreeItem::DATE:
+        // Not implemented yet
+        break;
+    }
+
+    return tmp;
+}
+
+bool QJsonTreeItem::deserialize(const QByteArray &chunk)
+{
+    switch(mFieldType) {
+    case QJsonTreeItem::STRING:
+        // tmp = value.toString().toLatin1();// toUtf8();
+        // tmp = QByteArray::fromStdString(mValue.toString().toStdString());
+        mValue = QString::fromLatin1(chunk);
+        break;
+    case QJsonTreeItem::INT:
+    case QJsonTreeItem::UINT: {
+            // szn::intToBytes(reinterpret_cast<unsigned char*>(tmp.data()), val);
+            unsigned int val;
+            szn::bytesToInt(val, reinterpret_cast<const unsigned char*>(chunk.data()));
+            mValue = val;
+        }
+        break;
+    case QJsonTreeItem::FLOAT: {
+            float val = 0;
+            szn::bytesToFloat(val, reinterpret_cast<const unsigned char*>(chunk.data()));
+            mValue = val;
+        }
+        break;
+    case QJsonTreeItem::DOUBLE: {
+            double val = 0;
+            szn::bytesToFloat(val, reinterpret_cast<const unsigned char*>(chunk.data()));
+            mValue = val;
+        }
+        break;
+    case QJsonTreeItem::DATE:
+        // Not implemented yet
+        break;
+    }
+
+    return true;
+}
+
+/*QByteArray QJsonTreeItem::serialize() const
+{
+    QByteArray tmp;
+    switch(mFieldType) {
+    case QJsonTreeItem::STRING:
+        // tmp = value.toString().toLatin1();// toUtf8();
+        tmp = QByteArray::fromStdString(mValue.toString().toStdString());
+        break;
+    case QJsonTreeItem::INT:
+    case QJsonTreeItem::UINT:
+        tmp = QByteArray::number(mValue.toInt(), 16); //.toHex();
+        break;
+    case QJsonTreeItem::FLOAT:
+        if (mLength == 4)
+            tmp = QByteArray::number(mValue.toFloat()).toHex();
+        else if (mLength == 8)
+            tmp = QByteArray::number(mValue.toDouble()).toHex();
+        break;
+    case QJsonTreeItem::DATE:
+        break;
+    }
+
+    while (tmp.size() < mLength)
+        tmp.prepend(1, '0');
+
+    return tmp;
+}*/
 
 //=========================================================================
 
@@ -803,6 +916,38 @@ int64_t QJsonModel::serialize(unsigned char* arr) const
  */
 QByteArray QJsonModel::serialize() const
 {
+    QMap<int, QByteArray> map = serialize(mRootItem);
+    QByteArray arr;
+
+    for (auto key : map.keys()) {
+        arr.append(map[key]);
+    }
+
+#ifdef QT_DEBUG
+    qDebug() << arr;
+    qDebug() << QString::fromLatin1(arr).toUtf8();
+    std::cout << QString::fromLatin1(arr).toUtf8().toStdString() << std::endl;
+    std::cout << arr.data() << std::endl;
+    std::cout << "arr size = " << arr.size() << std::endl;
+
+    for (int i = 0; i < arr.size(); ++i) {
+        int16_t val = int16_t(arr[i]) >= 0 ? int16_t(arr[i]) : (256 + int16_t(arr[i]));
+        std::cout << val << '\t';
+    }
+    std::cout << '\n';
+
+    for (int i = 0; i < arr.size(); ++i) {
+        szn::print(arr[i]);
+        std::cout << '\t';
+    }
+    std::cout << '\n';
+#endif
+
+    return arr;
+}
+
+/*QByteArray QJsonModel::serialize() const
+{
     QByteArray arr;
 
     for (auto key : mStructureMap.keys()) {
@@ -864,7 +1009,7 @@ QByteArray QJsonModel::serialize() const
 #endif
 
     return arr;
-}
+}*/
 
 /*QByteArray QJsonModel::serialize() const
 {
@@ -913,6 +1058,90 @@ QByteArray QJsonModel::serialize() const
 
     return arr;
 }*/
+
+// Compare two variants.
+bool itemLessThan(const QJsonTreeItem &v1, const QJsonTreeItem &v2)
+{
+    return v1.address() < v2.address();
+}
+
+QMap<int, QByteArray> QJsonModel::serialize(QJsonTreeItem *item) const
+{
+    auto type   = item->type();
+    int  nchild = item->childCount();
+    QMap<int, QByteArray> byteArrayMap;
+
+    if (QJsonValue::Object == type) {
+        for (int i = 0; i < nchild; ++i) {
+            auto ch = item->child(i);
+            if (ch->isLeaf()) {
+                auto key = ch->address();
+                byteArrayMap.insert(key, ch->serialize());
+            } else {
+                byteArrayMap.unite(serialize(ch));
+            }
+        }
+        return  byteArrayMap;
+    } else if (QJsonValue::Array == type) {
+        for (int i = 0; i < nchild; ++i) {
+            auto ch = item->child(i);
+            // arr.append(serialize(ch));
+            byteArrayMap.unite(serialize(ch));
+        }
+        return byteArrayMap;
+    } else {
+
+    }
+}
+
+bool QJsonModel::deserialize(const QByteArray &arr)
+{
+    return deserialize(mRootItem, arr);
+}
+
+bool QJsonModel::deserialize(QJsonTreeItem *item, const QByteArray &arr)
+{
+    auto type   = item->type();
+    int  nchild = item->childCount();
+    QMap<int, QByteArray> byteArrayMap;
+
+    if (QJsonValue::Object == type) {
+        for (int i = 0; i < nchild; ++i) {
+            auto ch = item->child(i);
+            if (ch->isLeaf()) {
+                auto key = ch->address();
+                auto len = ch->size();
+                ch->deserialize(arr.mid(key, len));
+            } else {
+                deserialize(ch, arr);
+            }
+        }
+    } else if (QJsonValue::Array == type) {
+        for (int i = 0; i < nchild; ++i) {
+            auto ch = item->child(i);
+            deserialize(ch, arr);
+        }
+    } else {
+
+    }
+
+    return true;
+}
+
+/*
+ *         QJsonValue va;
+        switch(item->value().type()){
+        case QVariant::Bool: {
+            va = item->value().toBool();
+            break;
+        }
+        default:
+            va = item->value().toString();
+            break;
+        }
+        (item->value());
+        return va;
+ */
 
 /*QByteArray QJsonModel::serialize() const
 {

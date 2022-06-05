@@ -303,8 +303,11 @@ public:
     int address() const;
     int size() const;
     QMap<QString, QVariant> attributeMap() const;
-
+    QByteArray serialize() const;
+    bool deserialize(const QByteArray &arr);
     QJsonValue::Type type() const;
+    bool isLeaf() const;
+    void setAsLeaf();
 
     static QJsonTreeItem* load(const QJsonValue& value, const QStringList &exceptions = {}, QJsonTreeItem * parent = nullptr);
     static QJsonTreeItem* loadWithDesc(QMap<QString, QVariant> &fieldValueMap, QMap<int, QString> &mStructureMap, QMap<QString, QMap<QString, QVariant> > &mPassDescriptionMap,
@@ -326,6 +329,7 @@ private:
     QList<QJsonTreeItem*> mChilds;
     QJsonTreeItem * mParent;
     QMap<QString, QVariant> mAttrMap; // Attribute -> value
+    bool mIsLeaf = false;
 };
 
 //---------------------------------------------------
@@ -364,10 +368,15 @@ public:
     void addException(const QStringList &exceptions);
 
     QByteArray serialize() const;
+    bool deserialize(const QByteArray &arr);
     int64_t serialize(unsigned char *arr) const; // Not implemented yet
 
 private:
     QJsonValue genJson(QJsonTreeItem *) const;
+    QMap<int, QByteArray> serialize(QJsonTreeItem *) const;
+    bool deserialize(QJsonTreeItem *item, const QByteArray &arr);
+
+private:
     QJsonTreeItem * mRootItem;
     QJsonTreeItem * mRootDescriptionItem;
     QStringList mHeaders;

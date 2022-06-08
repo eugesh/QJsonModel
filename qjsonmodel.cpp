@@ -262,6 +262,16 @@ QJsonTreeItem* QJsonTreeItem::loadWithDesc(const QJsonValue& value, const QJsonV
     return rootItem;
 }
 
+//!< Load by description, filling fields with default values
+QJsonTreeItem* QJsonTreeItem::loadByDesc(const QJsonValue& description,
+                                         const QStringList &exceptions, QJsonTreeItem * parent)
+{
+    QJsonTreeItem * rootItem = new QJsonTreeItem(parent);
+    rootItem->setKey("root");
+
+    return rootItem;
+}
+
 QJsonTreeItem::JsonFieldType QJsonTreeItem::fromString(const QString &str)
 {
     if (str.contains("uint", Qt::CaseInsensitive)) {

@@ -309,9 +309,14 @@ public:
     bool isLeaf() const;
     void setAsLeaf();
 
+    //!< Load JSON
     static QJsonTreeItem* load(const QJsonValue& value, const QStringList &exceptions = {}, QJsonTreeItem * parent = nullptr);
+    //!< Load JSON with description
     static QJsonTreeItem* loadWithDesc(const QJsonValue& value, const QJsonValue& description,
                                        const QStringList &exceptions = {}, QJsonTreeItem * parent = nullptr);
+    //!< Load by description, filling fields with default values
+    static QJsonTreeItem* loadByDesc(const QJsonValue& description,
+                                     const QStringList &exceptions = {}, QJsonTreeItem * parent = nullptr);
     static JsonFieldType fromString(const QString &str);
 
 protected:

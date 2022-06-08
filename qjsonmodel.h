@@ -310,8 +310,7 @@ public:
     void setAsLeaf();
 
     static QJsonTreeItem* load(const QJsonValue& value, const QStringList &exceptions = {}, QJsonTreeItem * parent = nullptr);
-    static QJsonTreeItem* loadWithDesc(QMap<QString, QVariant> &fieldValueMap, QMap<int, QString> &mStructureMap, QMap<QString, QMap<QString, QVariant> > &mPassDescriptionMap,
-                                       const QJsonValue& value, const QJsonValue& description,
+    static QJsonTreeItem* loadWithDesc(const QJsonValue& value, const QJsonValue& description,
                                        const QStringList &exceptions = {}, QJsonTreeItem * parent = nullptr);
     static JsonFieldType fromString(const QString &str);
 
@@ -369,7 +368,6 @@ public:
 
     QByteArray serialize() const;
     bool deserialize(const QByteArray &arr);
-    int64_t serialize(unsigned char *arr) const; // Not implemented yet
 
 private:
     QJsonValue genJson(QJsonTreeItem *) const;
@@ -382,9 +380,6 @@ private:
     QStringList mHeaders;
     //! List of exceptions (e.g. comments). Case insensitive, compairs on "contains".
     QStringList mExceptions;
-    QMap<int, QString> mStructureMap; // Address -> Field name
-    QMap<QString, QVariant> mFieldValueMap; // Field name -> value
-    QMap<QString, QMap<QString, QVariant> > mPassDescriptionMap; // Field name -N-> Attributes -> value
 };
 
 #endif // QJSONMODEL_H

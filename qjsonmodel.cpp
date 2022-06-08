@@ -1096,7 +1096,13 @@ QMap<int, QByteArray> QJsonModel::serialize(QJsonTreeItem *item) const
 
 bool QJsonModel::deserialize(const QByteArray &arr)
 {
-    return deserialize(mRootItem, arr);
+    beginResetModel();
+
+    auto res = deserialize(mRootItem, arr);
+
+    endResetModel();
+
+    return res;
 }
 
 bool QJsonModel::deserialize(QJsonTreeItem *item, const QByteArray &arr)

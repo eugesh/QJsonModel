@@ -317,7 +317,8 @@ public:
     //!< Load by description, filling fields with default values
     static QJsonTreeItem* loadByDesc(const QJsonValue& description,
                                      const QStringList &exceptions = {}, QJsonTreeItem * parent = nullptr);
-    static JsonFieldType fromString(const QString &str);
+    static JsonFieldType typeFromString(const QString &str);
+    static QVariant defaultFromString(const QString &str);
 
 protected:
 
@@ -349,10 +350,13 @@ public:
     ~QJsonModel();
     bool load(const QString& fileName);
     bool load(const QString& fileName, const QString descFileName);
+    bool loadDescription(const QString& descFileName);
     bool load(QIODevice * device);
     bool load(QIODevice * device, QIODevice * deviceDesc);
+    bool loadDescription(QIODevice * deviceDesc);
     bool loadJson(const QByteArray& json);
     bool loadJson(const QByteArray& json, const QByteArray& descJson);
+    bool loadJsonByDescription(const QByteArray& descJson);
     QVariant data(const QModelIndex &index, int role) const Q_DECL_OVERRIDE;
     bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) Q_DECL_OVERRIDE;
     QVariant headerData(int section, Qt::Orientation orientation, int role) const Q_DECL_OVERRIDE;

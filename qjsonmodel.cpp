@@ -251,7 +251,7 @@ QJsonTreeItem* QJsonTreeItem::loadWithDesc(const QJsonValue& value, const QJsonV
                                            modeStr.contains("w", Qt::CaseInsensitive) ? QJsonTreeItem::RW : QJsonTreeItem::R;
         rootItem->setEditMode(mode);
 
-        rootItem->setFieldType(fromString(description.toVariant().toMap()["type"].toString()));
+        rootItem->setFieldType(typeFromString(description.toVariant().toMap()["type"].toString()));
         bool isOk;
         rootItem->setAddress(description.toVariant().toMap()["addr"].toString().toInt(&isOk, 16));
         rootItem->setSize(description.toVariant().toMap()["size"].toInt(&isOk));
@@ -269,10 +269,82 @@ QJsonTreeItem* QJsonTreeItem::loadByDesc(const QJsonValue& description,
     QJsonTreeItem * rootItem = new QJsonTreeItem(parent);
     rootItem->setKey("root");
 
+    if (description.isObject()) {
+        //Get all QJsonValue childs
+        auto keys = description.toObject().keys();
+        for (const QString &key : qAsConst(keys)) {
+            if (contains(exceptions, key)) {
+                continue;
+            }
+            QJsonValue d = description.toObject().value(key);
+
+            if (!d.isObject()) {
+                QVariant defVal = description.toVariant().toMap()["default"];
+                if (!defVal.toString().isEmpty())
+                    rootItem->setValue(defVal);
+                else
+                    rootItem->setValue(defaultFromString(defVal.toString()));
+
+                rootItem->setType(d.type());
+                auto modeStr = description.toVariant().toMap()["mode2"].toString();
+                QJsonTreeItem::JsonEditMode mode = ! modeStr.contains("r", Qt::CaseInsensitive) ? QJsonTreeItem::W :
+                                                   modeStr.contains("w", Qt::CaseInsensitive) ? QJsonTreeItem::RW : QJsonTreeItem::R;
+                rootItem->setEditMode(mode);
+
+                rootItem->setFieldType(typeFromString(description.toVariant().toMap()["type"].toString()));
+                bool isOk;
+                rootItem->setAddress(description.toVariant().toMap()["addr"].toString().toInt(&isOk, 16));
+                rootItem->setSize(description.toVariant().toMap()["size"].toInt(&isOk));
+                rootItem->setDescription(description.toVariant().toMap()["desc"].toString());
+                rootItem->setAsLeaf();
+                rootItem->setKey(key);
+                break;
+            } else {
+                QJsonTreeItem * child = loadByDesc(d, exceptions, rootItem);
+                child->setKey(key);
+                if (!child->isLeaf())
+                    child->setType(d.type());
+                rootItem->appendChild(child);
+                //if (!rootItem->isLeaf()) // != QJsonValue::Null)
+                rootItem->setType(d.type());
+            }
+        }
+    } else if (description.isArray()) {
+        //Get all QJsonValue childs
+        int index = 0;
+        for (int i = 0; i < description.toArray().count(); ++i) {
+            QJsonValue d = description.toArray()[i];
+            QJsonTreeItem * child = loadByDesc(d, exceptions, rootItem);
+            child->setKey(QString::number(index));
+            child->setType(d.type());
+            rootItem->appendChild(child);
+            ++index;
+        }
+    } else {
+        /*QVariant defVal = description.toVariant().toMap()["default"];
+        if (!defVal.toString().isEmpty())
+            rootItem->setValue(defVal);
+        else
+            rootItem->setValue(defaultFromString(defVal.toString()));
+
+        rootItem->setType(description.type());
+        auto modeStr = description.toVariant().toMap()["mode2"].toString();
+        QJsonTreeItem::JsonEditMode mode = ! modeStr.contains("r", Qt::CaseInsensitive) ? QJsonTreeItem::W :
+                                           modeStr.contains("w", Qt::CaseInsensitive) ? QJsonTreeItem::RW : QJsonTreeItem::R;
+        rootItem->setEditMode(mode);
+
+        rootItem->setFieldType(typeFromString(description.toVariant().toMap()["type"].toString()));
+        bool isOk;
+        rootItem->setAddress(description.toVariant().toMap()["addr"].toString().toInt(&isOk, 16));
+        rootItem->setSize(description.toVariant().toMap()["size"].toInt(&isOk));
+        rootItem->setDescription(description.toVariant().toMap()["desc"].toString());
+        rootItem->setAsLeaf();*/
+    }
+
     return rootItem;
 }
 
-QJsonTreeItem::JsonFieldType QJsonTreeItem::fromString(const QString &str)
+QJsonTreeItem::JsonFieldType QJsonTreeItem::typeFromString(const QString &str)
 {
     if (str.contains("uint", Qt::CaseInsensitive)) {
         return UINT;
@@ -284,6 +356,21 @@ QJsonTreeItem::JsonFieldType QJsonTreeItem::fromString(const QString &str)
         return STRING;
     } else if (str.contains("date", Qt::CaseInsensitive)) {
         return DATE;
+    }
+}
+
+QVariant QJsonTreeItem::defaultFromString(const QString &str)
+{
+    if (str.contains("uint", Qt::CaseInsensitive)) {
+        return QVariant(0);
+    } else if (str.contains("int", Qt::CaseInsensitive)) {
+        return QVariant(0);
+    } else if (str.contains("float", Qt::CaseInsensitive)) {
+        return QVariant(0.0);
+    } else if (str.contains("str", Qt::CaseInsensitive)) {
+        return QVariant("");
+    } else if (str.contains("date", Qt::CaseInsensitive)) {
+        return QVariant(0);
     }
 }
 
@@ -531,6 +618,21 @@ bool QJsonModel::load(const QString& fileName, const QString descFileName)
     if (file.open(QIODevice::ReadOnly) && descFile.open(QIODevice::ReadOnly)) {
         success = load(&file, &descFile);
         file.close();
+        descFile.close();
+    } else {
+        success = false;
+    }
+
+    return success;
+}
+
+bool QJsonModel::loadDescription(const QString& descFileName)
+{
+    QFile descFile(descFileName);
+    bool success = false;
+    if (descFile.open(QIODevice::ReadOnly)) {
+        success = loadDescription(&descFile);
+        descFile.close();
     } else {
         success = false;
     }
@@ -546,6 +648,11 @@ bool QJsonModel::load(QIODevice *device)
 bool QJsonModel::load(QIODevice * device, QIODevice * deviceDesc)
 {
     return loadJson(device->readAll(), deviceDesc->readAll());
+}
+
+bool QJsonModel::loadDescription(QIODevice * deviceDesc)
+{
+    return loadJsonByDescription(deviceDesc->readAll());
 }
 
 bool QJsonModel::loadJson(const QByteArray &json)
@@ -593,8 +700,36 @@ bool QJsonModel::loadJson(const QByteArray& json, const QByteArray& descJson)
     return false;
 }
 
+bool QJsonModel::loadJsonByDescription(const QByteArray& descJson)
+{
+    auto const& jdocDesc = QJsonDocument::fromJson(descJson);
+
+    if (!jdocDesc.isNull()) {
+        beginResetModel();
+        delete mRootItem;
+        if (jdocDesc.isArray()) {
+            mRootItem = QJsonTreeItem::loadByDesc(QJsonValue(jdocDesc.array()), mExceptions);
+            mRootItem->setType(QJsonValue::Array);
+        } else {
+            mRootItem = QJsonTreeItem::loadByDesc(QJsonValue(jdocDesc.object()), mExceptions);
+            mRootItem->setType(QJsonValue::Object);
+        }
+        endResetModel();
+        return true;
+    }
+
+    qDebug()<<Q_FUNC_INFO<<"cannot load json";
+    return false;
+}
+
 QVariant QJsonModel::data(const QModelIndex &index, int role) const
 {
+    if (role == Qt::EditRole) {
+        // breakpoint!
+        // qDebug() << "Qt::EditRole! " << index;
+        std::cout << "Qt::EditRole! " << index.column() << " " << index.row();
+    }
+
     if (!index.isValid())
         return QVariant();
 

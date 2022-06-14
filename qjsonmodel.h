@@ -376,11 +376,12 @@ public:
     void addException(const QStringList &exceptions);
 
     QByteArray serialize() const;
+    QMap<int, QByteArray> serializeToMap(bool RwOnly = false) const;
     bool deserialize(const QByteArray &arr);
 
 private:
     QJsonValue genJson(QJsonTreeItem *) const;
-    QMap<int, QByteArray> serialize(QJsonTreeItem *) const;
+    QMap<int, QByteArray> serialize(QJsonTreeItem *, bool RwOnly = false) const;
     bool deserialize(QJsonTreeItem *item, const QByteArray &arr);
 
 private:

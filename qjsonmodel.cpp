@@ -1058,13 +1058,22 @@ QByteArray QJsonModel::serialize() const
     return arr;
 }
 
+QMap<int, QByteArray> QJsonModel::serializeToMap(bool RwOnly) const
+{
+    QMap<int, QByteArray> map;
+
+    map = serialize(mRootItem, RwOnly);
+
+    return map;
+}
+
 // Compare two variants.
 bool itemLessThan(const QJsonTreeItem &v1, const QJsonTreeItem &v2)
 {
     return v1.address() < v2.address();
 }
 
-QMap<int, QByteArray> QJsonModel::serialize(QJsonTreeItem *item) const
+QMap<int, QByteArray> QJsonModel::serialize(QJsonTreeItem *item, bool RwOnly) const
 {
     auto type   = item->type();
     int  nchild = item->childCount();
@@ -1075,16 +1084,22 @@ QMap<int, QByteArray> QJsonModel::serialize(QJsonTreeItem *item) const
             auto ch = item->child(i);
             if (ch->isLeaf()) {
                 auto key = ch->address();
-                byteArrayMap.insert(key, ch->serialize());
+                if (RwOnly) {
+                    auto mode = ch->editMode();
+                    if (mode != QJsonTreeItem::R)
+                        byteArrayMap.insert(key, ch->serialize());
+                } else {
+                    byteArrayMap.insert(key, ch->serialize());
+                }
             } else {
-                byteArrayMap.unite(serialize(ch));
+                byteArrayMap.unite(serialize(ch, RwOnly));
             }
         }
         return  byteArrayMap;
     } else if (QJsonValue::Array == type) {
         for (int i = 0; i < nchild; ++i) {
             auto ch = item->child(i);
-            byteArrayMap.unite(serialize(ch));
+            byteArrayMap.unite(serialize(ch, RwOnly));
         }
         return byteArrayMap;
     } else {

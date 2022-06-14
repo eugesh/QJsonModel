@@ -390,13 +390,37 @@ QByteArray QJsonTreeItem::serialize() const
         tmp = QByteArray::fromStdString(mValue.toString().toStdString());
         break;
     case QJsonTreeItem::INT: {
-            int val = mValue.toInt();
-            szn::intToBytes(reinterpret_cast<unsigned char*>(tmp.data()), val);
+            switch (mLength) {
+                case 1: {
+                    int8_t val = mValue.toUInt();
+                    szn::intToBytes(reinterpret_cast<unsigned char*>(tmp.data()), val);
+                } break;
+                case 2: {
+                    int16_t val = mValue.toUInt();
+                    szn::intToBytes(reinterpret_cast<unsigned char*>(tmp.data()), val);
+                } break;
+                case 4: {
+                    int32_t val = mValue.toUInt();
+                    szn::intToBytes(reinterpret_cast<unsigned char*>(tmp.data()), val);
+                } break;
+            }
         }
         break;
     case QJsonTreeItem::UINT: {
-            int val = mValue.toUInt();
-            szn::intToBytes(reinterpret_cast<unsigned char*>(tmp.data()), val);
+            switch (mLength) {
+                case 1: {
+                    uint8_t val = mValue.toUInt();
+                    szn::intToBytes(reinterpret_cast<unsigned char*>(tmp.data()), val);
+                } break;
+                case 2: {
+                    uint16_t val = mValue.toUInt();
+                    szn::intToBytes(reinterpret_cast<unsigned char*>(tmp.data()), val);
+                } break;
+                case 4: {
+                    uint32_t val = mValue.toUInt();
+                    szn::intToBytes(reinterpret_cast<unsigned char*>(tmp.data()), val);
+                } break;
+            }
         }
         break;
     case QJsonTreeItem::FLOAT: {
@@ -425,14 +449,45 @@ bool QJsonTreeItem::deserialize(const QByteArray &chunk)
         // tmp = QByteArray::fromStdString(mValue.toString().toStdString());
         mValue = QString::fromLatin1(chunk);
         break;
-    case QJsonTreeItem::INT:
+    case QJsonTreeItem::INT: {
+        switch (mLength) {
+            case 1: {
+                int8_t val;
+                szn::bytesToInt(val, reinterpret_cast<const unsigned char*>(chunk.data()));
+                mValue = val;
+            } break;
+            case 2: {
+                int16_t val;
+                szn::bytesToInt(val, reinterpret_cast<const unsigned char*>(chunk.data()));
+                mValue = val;
+            } break;
+            case 4: {
+                int32_t val;
+                szn::bytesToInt(val, reinterpret_cast<const unsigned char*>(chunk.data()));
+                mValue = val;
+            } break;
+        }
+    } break;
     case QJsonTreeItem::UINT: {
             // szn::intToBytes(reinterpret_cast<unsigned char*>(tmp.data()), val);
-            unsigned int val;
-            szn::bytesToInt(val, reinterpret_cast<const unsigned char*>(chunk.data()));
-            mValue = val;
+        switch (mLength) {
+            case 1: {
+                uint8_t val;
+                szn::bytesToInt(val, reinterpret_cast<const unsigned char*>(chunk.data()));
+                mValue = val;
+            } break;
+            case 2: {
+                uint16_t val;
+                szn::bytesToInt(val, reinterpret_cast<const unsigned char*>(chunk.data()));
+                mValue = val;
+            } break;
+            case 4: {
+                uint32_t val;
+                szn::bytesToInt(val, reinterpret_cast<const unsigned char*>(chunk.data()));
+                mValue = val;
+            } break;
         }
-        break;
+    } break;
     case QJsonTreeItem::FLOAT: {
             float val = 0;
             szn::bytesToFloat(val, reinterpret_cast<const unsigned char*>(chunk.data()));
@@ -871,6 +926,7 @@ void QJsonModel::objectToJson(QJsonObject jsonObject, QByteArray &json, int inde
     json += QByteArray(4 * indent, ' ');
     json += compact ? "}" : "}\n";
 }
+
 void QJsonModel::arrayToJson(QJsonArray jsonArray, QByteArray &json, int indent, bool compact)
 {
     json += compact ? "[" : "[\n";
@@ -897,6 +953,7 @@ void QJsonModel::arrayContentToJson(QJsonArray jsonArray, QByteArray &json, int 
         json += compact ? "," : ",\n";
     }
 }
+
 void QJsonModel::objectContentToJson(QJsonObject jsonObject, QByteArray &json, int indent, bool compact)
 {
     if (jsonObject.size() <= 0) {

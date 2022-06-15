@@ -32,7 +32,7 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QIcon>
-
+#include <QValidator>
 
 namespace QUtf8Functions
 {
@@ -263,8 +263,15 @@ struct QUtf8BaseTraits
     }
 };
 
+class asciiValidator : public QValidator {
+public:
+    explicit asciiValidator(QObject *parent = nullptr);
+
+    virtual QValidator::State validate(QString &str, int &) const override;
+};
+
 class QJsonModel;
-class QJsonItem;
+//class QJsonItem;
 
 static const QStringList tagNames = { "desc", "mode", "default", "address", "size", "type" };
 

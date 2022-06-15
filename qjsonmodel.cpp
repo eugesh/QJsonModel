@@ -32,6 +32,7 @@
 #include <QFile>
 #include <QDebug>
 #include <QFont>
+#include <QValidator>
 #include <string>
 
 
@@ -403,7 +404,6 @@ QMap<QString, QVariant> QJsonTreeItem::attributeMap() const
 {
     return mAttrMap;
 }
-
 
 QByteArray QJsonTreeItem::serialize() const
 {
@@ -837,6 +837,25 @@ QVariant QJsonModel::data(const QModelIndex &index, int role) const
     return QVariant();
 }
 
+asciiValidator::asciiValidator(QObject *parent) :
+    QValidator(parent)
+{
+    const QList<QLocale> locales =
+            QLocale::matchingLocales(QLocale::C, QLocale::AnyScript, QLocale::AnyCountry);
+
+    setLocale(locales.first());
+}
+
+QValidator::State asciiValidator::validate(QString &str, int &) const
+{
+    for (auto symb : str) {
+        if (symb > 127)
+            return QValidator::Invalid;
+    }
+
+    return QValidator::Acceptable;
+}
+
 bool QJsonModel::setData(const QModelIndex &index, const QVariant &value, int role)
 {
     int col = index.column();
@@ -845,6 +864,17 @@ bool QJsonModel::setData(const QModelIndex &index, const QVariant &value, int ro
             QJsonTreeItem *item = static_cast<QJsonTreeItem*>(index.internalPointer());
             if (item->editMode() == QJsonTreeItem::R)
                 return false;
+
+            if (item->fieldType() == QJsonTreeItem::STRING) {
+                asciiValidator validator;
+                int pos;
+                auto str = value.toString();
+                auto state = validator.validate(str, pos);
+                if (state == QValidator::Invalid)
+                    return false;
+                if (str.size() > item->size())
+                    return false;
+            }
 
             item->setValue(value);
             emit dataChanged(index, index, {Qt::EditRole});

@@ -856,6 +856,45 @@ QValidator::State asciiValidator::validate(QString &str, int &) const
     return QValidator::Acceptable;
 }
 
+int uintLimit(int size) {
+    switch (size) {
+    case 1:
+        return std::numeric_limits<uint8_t>::max();
+    case 2:
+        return std::numeric_limits<uint16_t>::max();
+    case 4:
+        return std::numeric_limits<uint32_t>::max();
+    case 8:
+        return std::numeric_limits<uint64_t>::max();
+    }
+}
+
+int intMaxLimit(int size) {
+    switch (size) {
+    case 1:
+        return std::numeric_limits<int8_t>::max();
+    case 2:
+        return std::numeric_limits<int16_t>::max();
+    case 4:
+        return std::numeric_limits<int32_t>::max();
+    case 8:
+        return std::numeric_limits<int64_t>::max();
+    }
+}
+
+int intMinLimit(int size) {
+    switch (size) {
+    case 1:
+        return std::numeric_limits<int8_t>::min();
+    case 2:
+        return std::numeric_limits<int16_t>::min();
+    case 4:
+        return std::numeric_limits<int32_t>::min();
+    case 8:
+        return std::numeric_limits<int64_t>::min();
+    }
+}
+
 bool QJsonModel::setData(const QModelIndex &index, const QVariant &value, int role)
 {
     int col = index.column();
@@ -873,6 +912,25 @@ bool QJsonModel::setData(const QModelIndex &index, const QVariant &value, int ro
                 if (state == QValidator::Invalid)
                     return false;
                 if (str.size() > item->size())
+                    return false;
+            } else if (item->fieldType() == QJsonTreeItem::INT) {
+                QIntValidator validator;
+                int max = intMaxLimit(item->size());
+                int min = intMinLimit(item->size());
+                validator.setRange(min, max);
+                int pos = 0;
+                auto str = value.toString();
+                auto state = validator.validate(str, pos);
+                if (state == QValidator::Invalid || state == QValidator::Intermediate)
+                    return false;
+            } else if (item->fieldType() == QJsonTreeItem::UINT) {
+                QIntValidator validator;
+                int max = uintLimit(item->size());
+                validator.setRange(0, max);
+                int pos = 0;
+                auto str = value.toString();
+                auto state = validator.validate(str, pos);
+                if (state == QValidator::Invalid || state == QValidator::Intermediate)
                     return false;
             }
 

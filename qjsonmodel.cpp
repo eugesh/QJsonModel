@@ -35,6 +35,30 @@
 #include <string>
 
 
+uint32_t QDateToBcd(const QDate &date) {
+    uint32_t bcd = 0;
+
+    bcd += date.day() * 1000000;
+    bcd += date.month() * 10000;
+    bcd += date.year();
+
+    return bcd;
+}
+
+QDate BcdToQDate(uint32_t bcd) {
+    QDate date;
+
+    int day = 0, month = 0, year = 0;
+
+    day = bcd / 1000000;
+    month = bcd / 10000 - day * 100;
+    year = bcd - day * 1000000 - month * 10000;
+
+    date.setDate(year, month, day);
+
+    return date;
+}
+
 bool contains(const QStringList& list, const QString &value) {
     for (auto val : list) {
         if (value.contains(val, Qt::CaseInsensitive))
@@ -371,7 +395,7 @@ QVariant QJsonTreeItem::defaultFromString(const QString &str, int size)
     } else if (str.contains("str", Qt::CaseInsensitive)) {
         return QVariant::fromValue(QString('\0', size));
     } else if (str.contains("date", Qt::CaseInsensitive)) {
-        return QVariant(0);
+        return QDate(0, 0, 0);
     }
 }
 
@@ -434,8 +458,10 @@ QByteArray QJsonTreeItem::serialize() const
             szn::floatToBytes(reinterpret_cast<unsigned char*>(tmp.data()), val);
         }
         break;
-    case QJsonTreeItem::DATE:
-        // Not implemented yet
+    case QJsonTreeItem::DATE: {
+            uint32_t val = QDateToBcd(mValue.toDate());
+            szn::intToBytes(reinterpret_cast<unsigned char*>(tmp.data()), val);
+        }
         break;
     }
 
@@ -501,8 +527,11 @@ bool QJsonTreeItem::deserialize(const QByteArray &chunk)
             mValue = val;
         }
         break;
-    case QJsonTreeItem::DATE:
-        // Not implemented yet
+    case QJsonTreeItem::DATE: {
+            uint32_t val = 0;
+            szn::bytesToInt(val, reinterpret_cast<const unsigned char*>(chunk.data()));
+            mValue = BcdToQDate(val);
+        }
         break;
     }
 

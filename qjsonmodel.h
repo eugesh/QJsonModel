@@ -318,7 +318,7 @@ public:
     static QJsonTreeItem* loadByDesc(const QJsonValue& description,
                                      const QStringList &exceptions = {}, QJsonTreeItem * parent = nullptr);
     static JsonFieldType typeFromString(const QString &str);
-    static QVariant defaultFromString(const QString &str);
+    static QVariant defaultFromString(const QString &str, int size);
 
 protected:
 

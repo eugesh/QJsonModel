@@ -280,24 +280,25 @@ QJsonTreeItem* QJsonTreeItem::loadByDesc(const QJsonValue& description,
 
             if (!d.isObject()) {
                 QVariant defVal = description.toVariant().toMap()["default"];
-                if (!defVal.toString().isEmpty())
-                    rootItem->setValue(defVal);
-                else
-                    rootItem->setValue(defaultFromString(defVal.toString()));
-
+                bool isOk;
+                auto size = description.toVariant().toMap()["size"].toInt(&isOk);
                 rootItem->setType(d.type());
                 auto modeStr = description.toVariant().toMap()["mode2"].toString();
                 QJsonTreeItem::JsonEditMode mode = ! modeStr.contains("r", Qt::CaseInsensitive) ? QJsonTreeItem::W :
                                                    modeStr.contains("w", Qt::CaseInsensitive) ? QJsonTreeItem::RW : QJsonTreeItem::R;
                 rootItem->setEditMode(mode);
 
-                rootItem->setFieldType(typeFromString(description.toVariant().toMap()["type"].toString()));
-                bool isOk;
+                auto type = description.toVariant().toMap()["type"].toString();
+                rootItem->setFieldType(typeFromString(type));
                 rootItem->setAddress(description.toVariant().toMap()["addr"].toString().toInt(&isOk, 16));
-                rootItem->setSize(description.toVariant().toMap()["size"].toInt(&isOk));
+                rootItem->setSize(size);
                 rootItem->setDescription(description.toVariant().toMap()["desc"].toString());
                 rootItem->setAsLeaf();
                 rootItem->setKey(key);
+                if (defVal.toString().isEmpty() || !defVal.isValid() || defVal.isNull())
+                    rootItem->setValue(defaultFromString(type, size));
+                else
+                    rootItem->setValue(defVal);
                 break;
             } else {
                 QJsonTreeItem * child = loadByDesc(d, exceptions, rootItem);
@@ -359,7 +360,7 @@ QJsonTreeItem::JsonFieldType QJsonTreeItem::typeFromString(const QString &str)
     }
 }
 
-QVariant QJsonTreeItem::defaultFromString(const QString &str)
+QVariant QJsonTreeItem::defaultFromString(const QString &str, int size)
 {
     if (str.contains("uint", Qt::CaseInsensitive)) {
         return QVariant(0);
@@ -368,7 +369,7 @@ QVariant QJsonTreeItem::defaultFromString(const QString &str)
     } else if (str.contains("float", Qt::CaseInsensitive)) {
         return QVariant(0.0);
     } else if (str.contains("str", Qt::CaseInsensitive)) {
-        return QVariant("");
+        return QVariant::fromValue(QString('\0', size));
     } else if (str.contains("date", Qt::CaseInsensitive)) {
         return QVariant(0);
     }

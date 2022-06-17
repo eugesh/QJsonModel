@@ -1121,11 +1121,19 @@ void QJsonModel::valueToJson(QJsonValue jsonValue, QByteArray &json, int indent,
         }
         break;
     }
-    case QJsonValue::String:
+    case QJsonValue::String: {
         json += '"';
-        json += escapedString(jsonValue.toString());
+        QString str;
+        if (QDate::fromString(jsonValue.toString(), Qt::ISODate).isValid()) {
+            str = jsonValue.toString();
+            str = QDate::fromString(str, Qt::ISODate).toString("dd.MM.yyyy");
+        } else {
+            str = jsonValue.toString();
+        }
+        json += escapedString(str);
         json += '"';
         break;
+    }
     case QJsonValue::Array:
         json += compact ? "[" : "[\n";
         arrayContentToJson(jsonValue.toArray(), json, indent + (compact ? 0 : 1), compact);

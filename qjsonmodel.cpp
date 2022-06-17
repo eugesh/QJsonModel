@@ -276,7 +276,8 @@ QJsonTreeItem* QJsonTreeItem::loadWithDesc(const QJsonValue& value, const QJsonV
                                            modeStr.contains("w", Qt::CaseInsensitive) ? QJsonTreeItem::RW : QJsonTreeItem::R;
         rootItem->setEditMode(mode);
 
-        rootItem->setFieldType(typeFromString(description.toVariant().toMap()["type"].toString()));
+        auto type = typeFromString(description.toVariant().toMap()["type"].toString());
+        rootItem->setFieldType(type);
         bool isOk;
         rootItem->setAddress(description.toVariant().toMap()["addr"].toString().toInt(&isOk, 16));
         rootItem->setSize(description.toVariant().toMap()["size"].toInt(&isOk));
@@ -378,6 +379,8 @@ QJsonTreeItem::JsonFieldType QJsonTreeItem::typeFromString(const QString &str)
         return INT;
     } else if (str.contains("float", Qt::CaseInsensitive)) {
         return FLOAT;
+    } else if (str.contains("double", Qt::CaseInsensitive)) {
+        return DOUBLE;
     } else if (str.contains("str", Qt::CaseInsensitive)) {
         return STRING;
     } else if (str.contains("date", Qt::CaseInsensitive)) {
@@ -393,7 +396,9 @@ QVariant QJsonTreeItem::defaultFromString(const QString &str, int size)
         return QVariant(0);
     } else if (str.contains("float", Qt::CaseInsensitive)) {
         return QVariant(0.0);
-    } else if (str.contains("str", Qt::CaseInsensitive)) {
+    } else if (str.contains("double", Qt::CaseInsensitive)) {
+        return QVariant(0.0);
+    }  else if (str.contains("str", Qt::CaseInsensitive)) {
         return QVariant::fromValue(QString('\0', size));
     } else if (str.contains("date", Qt::CaseInsensitive)) {
         return QDate(0, 0, 0);
@@ -410,9 +415,14 @@ QByteArray QJsonTreeItem::serialize() const
     QByteArray tmp;
     tmp.resize(mLength);
     switch(mFieldType) {
-    case QJsonTreeItem::STRING:
-        // tmp = value.toString().toLatin1();// toUtf8();
-        tmp = QByteArray::fromStdString(mValue.toString().toStdString());
+    case QJsonTreeItem::STRING: {
+            // tmp = value.toString().toLatin1();// toUtf8();
+            tmp = QByteArray::fromStdString(mValue.toString().toStdString());
+            if (tmp.size() < mLength) {
+                for (int i = 0; i < (mLength - tmp.size()); ++i)
+                    tmp.append('\0');
+            }
+        }
         break;
     case QJsonTreeItem::INT: {
             switch (mLength) {

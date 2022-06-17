@@ -1,12 +1,15 @@
 #ifndef SERIALIZATION_H
 #define SERIALIZATION_H
 
+#include <iostream>
+
 /**
  * Set of function for conversion of different types to array of bytes.
  */
 namespace szn {
 
-void print(unsigned char byte)
+template<typename T>
+void print(T byte)
 {
      for (int i = 7; i >= 0; i--) {
         int b = byte >> i;

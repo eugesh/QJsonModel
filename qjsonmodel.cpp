@@ -388,7 +388,7 @@ QJsonTreeItem::JsonFieldType QJsonTreeItem::typeFromString(const QString &str)
     }
 }
 
-QVariant QJsonTreeItem::defaultFromString(const QString &str, int size)
+QVariant QJsonTreeItem::defaultFromString(const QString &str, size_t size)
 {
     if (str.contains("uint", Qt::CaseInsensitive)) {
         return QVariant(0);
@@ -860,7 +860,7 @@ asciiValidator::asciiValidator(QObject *parent) :
 QValidator::State asciiValidator::validate(QString &str, int &) const
 {
     for (auto symb : str) {
-        if (symb > 127)
+        if (symb.unicode() > 127)
             return QValidator::Invalid;
     }
 
@@ -1229,14 +1229,22 @@ QMap<int, QByteArray> QJsonModel::serialize(QJsonTreeItem *item, bool RwOnly) co
                     byteArrayMap.insert(key, ch->serialize());
                 }
             } else {
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
                 byteArrayMap.unite(serialize(ch, RwOnly));
+#else
+                byteArrayMap.insert(serialize(ch, RwOnly));
+#endif
             }
         }
         return  byteArrayMap;
     } else if (QJsonValue::Array == type) {
         for (int i = 0; i < nchild; ++i) {
             auto ch = item->child(i);
-            byteArrayMap.unite(serialize(ch, RwOnly));
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+                byteArrayMap.unite(serialize(ch, RwOnly));
+#else
+            byteArrayMap.insert(serialize(ch, RwOnly));
+#endif
         }
         return byteArrayMap;
     } else {

@@ -399,7 +399,7 @@ QVariant QJsonTreeItem::defaultFromString(const QString &str, int size)
     } else if (str.contains("double", Qt::CaseInsensitive)) {
         return QVariant(0.0);
     }  else if (str.contains("str", Qt::CaseInsensitive)) {
-        return QVariant::fromValue(QString('\0', size));
+        return QVariant::fromValue(QString(size, '\0'));
     } else if (str.contains("date", Qt::CaseInsensitive)) {
         return QDate(0, 0, 0);
     }
@@ -419,7 +419,8 @@ QByteArray QJsonTreeItem::serialize() const
             // tmp = value.toString().toLatin1();// toUtf8();
             tmp = QByteArray::fromStdString(mValue.toString().toStdString());
             if (tmp.size() < mLength) {
-                for (int i = 0; i < (mLength - tmp.size()); ++i)
+                auto tail = mLength - tmp.size();
+                for (int i = 0; i < tail; ++i)
                     tmp.append('\0');
             }
         }

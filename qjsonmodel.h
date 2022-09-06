@@ -381,7 +381,7 @@ public:
     void arrayContentToJson(QJsonArray jsonArray, QByteArray &json, int indent, bool compact);
     void objectContentToJson(QJsonObject jsonObject, QByteArray &json, int indent, bool compact);
     void valueToJson(QJsonValue jsonValue, QByteArray &json, int indent, bool compact);
-    //! List of tags to skip during parsing
+    //! List of tags to skip during JSON parsing
     void addException(const QStringList &exceptions);
 
     QByteArray serialize() const;

@@ -60,11 +60,10 @@ QDate BcdToQDate(uint32_t bcd) {
     return date;
 }
 
-bool contains(const QStringList& list, const QString &value) {
-    for (auto val : list) {
+inline bool contains(const QStringList& list, const QString &value) {
+    for (auto val : list)
         if (value.contains(val, Qt::CaseInsensitive))
             return true;
-    }
 
     return false;
 }
@@ -213,7 +212,7 @@ QJsonTreeItem* QJsonTreeItem::load(const QJsonValue& value, const QStringList &e
                 continue;
             }
             QJsonValue v = value.toObject().value(key);
-            QJsonTreeItem * child = load(v, exceptions, rootItem);
+            QJsonTreeItem *child = load(v, exceptions, rootItem);
             child->setKey(key);
             child->setType(v.type());
             rootItem->appendChild(child);
@@ -223,7 +222,7 @@ QJsonTreeItem* QJsonTreeItem::load(const QJsonValue& value, const QStringList &e
         int index = 0;
         auto arr = value.toArray();
         for (const QJsonValue &v : arr) {
-            QJsonTreeItem * child = load(v, exceptions, rootItem);
+            QJsonTreeItem *child = load(v, exceptions, rootItem);
             child->setKey(QString::number(index));
             child->setType(v.type());
             rootItem->appendChild(child);
@@ -1292,7 +1291,7 @@ bool QJsonModel::deserialize(QJsonTreeItem *item, const QByteArray &arr)
     return true;
 }
 
-QJsonValue QJsonModel::genJson(QJsonTreeItem * item) const
+QJsonValue QJsonModel::genJson(QJsonTreeItem *item) const
 {
     auto type   = item->type();
     int  nchild = item->childCount();

@@ -264,9 +264,22 @@ struct QUtf8BaseTraits
 class QJsonModel;
 class QJsonItem;
 
+static const QStringList tagNames = { "desc", "mode", "default", "address", "size", "type" };
+
+enum JsonTags {
+    DESC, MODE, DEF, ADDR, SIZE, TYPE
+};
+
 class QJsonTreeItem
 {
 public:
+    enum JsonEditMode {
+        R, W, RW
+    };
+    enum JsonFieldType {
+        STRING, INT, UINT, FLOAT, DATE // DOUBLE
+    };
+
     QJsonTreeItem(QJsonTreeItem * parent = nullptr);
     ~QJsonTreeItem();
     void appendChild(QJsonTreeItem * item);
@@ -276,12 +289,28 @@ public:
     int row() const;
     void setKey(const QString& key);
     void setValue(const QVariant& value);
+    void setFieldType(const JsonFieldType &type);
+    void setAddress(int addr);
+    void setSize(int size);
     void setType(const QJsonValue::Type& type);
+    void setDescription(const QString &desc);
+    void setEditMode(const JsonEditMode &editMode);
     QString key() const;
     QVariant value() const;
+    QString description() const;
+    JsonFieldType fieldType() const;
+    JsonEditMode editMode() const;
+    int address() const;
+    int size() const;
+    QMap<QString, QVariant> attributeMap() const;
+
     QJsonValue::Type type() const;
 
     static QJsonTreeItem* load(const QJsonValue& value, const QStringList &exceptions = {}, QJsonTreeItem * parent = nullptr);
+    static QJsonTreeItem* loadWithDesc(QMap<QString, QVariant> &fieldValueMap, QMap<int, QString> &mStructureMap, QMap<QString, QMap<QString, QVariant> > &mPassDescriptionMap,
+                                       const QJsonValue& value, const QJsonValue& description,
+                                       const QStringList &exceptions = {}, QJsonTreeItem * parent = nullptr);
+    static JsonFieldType fromString(const QString &str);
 
 protected:
 
@@ -289,8 +318,14 @@ private:
     QString mKey;
     QVariant mValue;
     QJsonValue::Type mType;
+    QString mDescription;
+    JsonEditMode mEditMode = RW;
+    int mLength;
+    JsonFieldType mFieldType = STRING;
+    int mAddress;
     QList<QJsonTreeItem*> mChilds;
     QJsonTreeItem * mParent;
+    QMap<QString, QVariant> mAttrMap; // Attribute -> value
 };
 
 //---------------------------------------------------
@@ -300,13 +335,16 @@ class QJsonModel : public QAbstractItemModel
     Q_OBJECT
 public:
     explicit QJsonModel(QObject *parent = nullptr);
-    QJsonModel(const QString& fileName, QObject *parent = nullptr);
+    QJsonModel(const QString& fileName, const QString& fileNameDesc = "", QObject *parent = nullptr);
     QJsonModel(QIODevice * device, QObject *parent = nullptr);
     QJsonModel(const QByteArray& json, QObject *parent = nullptr);
     ~QJsonModel();
     bool load(const QString& fileName);
+    bool load(const QString& fileName, const QString descFileName);
     bool load(QIODevice * device);
+    bool load(QIODevice * device, QIODevice * deviceDesc);
     bool loadJson(const QByteArray& json);
+    bool loadJson(const QByteArray& json, const QByteArray& descJson);
     QVariant data(const QModelIndex &index, int role) const Q_DECL_OVERRIDE;
     bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) Q_DECL_OVERRIDE;
     QVariant headerData(int section, Qt::Orientation orientation, int role) const Q_DECL_OVERRIDE;
@@ -325,12 +363,19 @@ public:
     //! List of tags to skip during parsing
     void addException(const QStringList &exceptions);
 
+    QByteArray serialize() const;
+    int64_t serialize(unsigned char *arr) const;
+
 private:
     QJsonValue genJson(QJsonTreeItem *) const;
     QJsonTreeItem * mRootItem;
+    QJsonTreeItem * mRootDescriptionItem;
     QStringList mHeaders;
     //! List of exceptions (e.g. comments). Case insensitive, compairs on "contains".
     QStringList mExceptions;
+    QMap<int, QString> mStructureMap; // Address -> Field name
+    QMap<QString, QVariant> mFieldValueMap; // Field name -> value
+    QMap<QString, QMap<QString, QVariant> > mPassDescriptionMap; // Field name -N-> Attributes -> value
 };
 
 #endif // QJSONMODEL_H

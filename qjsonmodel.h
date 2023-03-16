@@ -395,7 +395,6 @@ private:
 
 private:
     QJsonTreeItem * mRootItem;
-    QJsonTreeItem * mRootDescriptionItem;
     QStringList mHeaders;
     //! List of exceptions (e.g. comments). Case insensitive, compairs on "contains".
     QStringList mExceptions;

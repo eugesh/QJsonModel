@@ -651,7 +651,6 @@ QByteArray escapedString(const QString &s)
 QJsonModel::QJsonModel(QObject *parent)
     : QAbstractItemModel(parent)
     , mRootItem{new QJsonTreeItem}
-    , mRootDescriptionItem{new QJsonTreeItem}
 {
     mHeaders.append("key");
     mHeaders.append("value");
@@ -1235,7 +1234,7 @@ QMap<int, QByteArray> QJsonModel::serialize(QJsonTreeItem *item, bool RwOnly) co
 #endif
             }
         }
-        return  byteArrayMap;
+        return byteArrayMap;
     } else if (QJsonValue::Array == type) {
         for (int i = 0; i < nchild; ++i) {
             auto ch = item->child(i);

@@ -4,6 +4,7 @@
 #include <iostream>
 
 /**
+ * @brief szn namespace
  * Set of function for conversion of different types to array of bytes.
  */
 namespace szn {
@@ -21,9 +22,9 @@ void print(T byte)
 }
 
 /**
- * @brief floatToBytes Converts float or double to array of bytes
- * @param bytes bytes array
- * @param n float or double
+ * @brief floatToBytes Converts float or double to array of bytes.
+ * @param bytes bytes array.
+ * @param n float or double.
  */
 template<typename T>
 void floatToBytes(unsigned char *bytes, T n)
@@ -32,10 +33,9 @@ void floatToBytes(unsigned char *bytes, T n)
 }
 
 /**
- * @brief bytesToFloat converts bytes array to float or double
- * @param n float or double
- * @param bytes bytes array
- * @return
+ * @brief bytesToFloat Converts bytes array to float or double.
+ * @param n float or double.
+ * @param bytes Bytes array.
  */
 template<typename T>
 void bytesToFloat(T &n, const unsigned char *bytes)
@@ -44,9 +44,9 @@ void bytesToFloat(T &n, const unsigned char *bytes)
 }
 
 /**
- * @brief intToBytes converts integer to array of bytes
- * @param bytes bytes array
- * @param n int16, int32 or int64
+ * @brief intToBytes Converts integer to array of bytes.
+ * @param bytes Bytes array.
+ * @param n int16, int32 or int64.
  */
 template<typename T>
 void intToBytes(unsigned char *bytes, T n)
@@ -57,9 +57,9 @@ void intToBytes(unsigned char *bytes, T n)
 }
 
 /**
- * @brief bytesToInt converts array of bytes to integer
- * @param n int16, int32 or int64
- * @param bytes bytes array
+ * @brief bytesToInt Converts array of bytes to integer.
+ * @param n int16, int32 or int64.
+ * @param bytes Bytes array.
  */
 template<typename T>
 void bytesToInt(T &n, const unsigned char *bytes)

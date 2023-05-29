@@ -341,7 +341,7 @@ private:
     JsonFieldType mFieldType = STRING;
     int mAddress;
     QList<QJsonTreeItem*> mChilds;
-    QJsonTreeItem * mParent;
+    QJsonTreeItem *mParent;
     QMap<QString, QVariant> mAttrMap; // Attribute -> value
     bool mIsLeaf = false;
 };
@@ -369,7 +369,7 @@ public:
     QVariant data(const QModelIndex &index, int role) const Q_DECL_OVERRIDE;
     bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) Q_DECL_OVERRIDE;
     QVariant headerData(int section, Qt::Orientation orientation, int role) const Q_DECL_OVERRIDE;
-    QModelIndex index(int row, int column,const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE;
+    QModelIndex index(int row, int column, const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE;
     QModelIndex parent(const QModelIndex &index) const Q_DECL_OVERRIDE;
     int rowCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE;
     int columnCount(const QModelIndex &parent = QModelIndex()) const Q_DECL_OVERRIDE;
@@ -383,9 +383,11 @@ public:
     void valueToJson(QJsonValue jsonValue, QByteArray &json, int indent, bool compact);
     //! List of tags to skip during JSON parsing
     void addException(const QStringList &exceptions);
+    QVariant valueByName(const QString &name) const;
 
     QByteArray serialize() const;
     QMap<int, QByteArray> serializeToMap(bool RwOnly = false) const;
+    QMap<QString, QVariant> serializeToNameValueMap(bool RwOnly = false) const;
     bool deserialize(const QByteArray &arr);
 
 private:

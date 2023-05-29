@@ -1151,6 +1151,21 @@ void QJsonModel::valueToJson(QJsonValue jsonValue, QByteArray &json, int indent,
     }
 }
 
+QVariant QJsonModel::valueByName(const QString &name) const
+{
+    QVariant value;
+
+    for (int i = 0; i < rowCount(); ++i) {
+        auto ind = index(i, 0); // Debug
+        auto valueName = data(index(i, 0), Qt::DisplayRole);
+        if (name.contains(valueName.toString(), Qt::CaseInsensitive))
+            return data(index(i, 1), Qt::DisplayRole);
+    }
+
+    return {};
+}
+
+
 void QJsonModel::addException(const QStringList &exceptions)
 {
     mExceptions = exceptions;
@@ -1191,6 +1206,19 @@ QByteArray QJsonModel::serialize() const
 #endif
 
     return arr;
+}
+
+QMap<QString, QVariant> QJsonModel::serializeToNameValueMap(bool RwOnly) const
+{
+    QMap<QString, QVariant> map;
+
+    for (int i = 0; i < rowCount(); ++i) {
+        auto nameIndex = index(i, 0);
+        auto valueIndex = index(i, 1);
+        map.insert(data(nameIndex, Qt::DisplayRole).toString(), data(valueIndex, Qt::DisplayRole));
+    }
+
+    return map;
 }
 
 QMap<int, QByteArray> QJsonModel::serializeToMap(bool RwOnly) const
@@ -1248,6 +1276,8 @@ QMap<int, QByteArray> QJsonModel::serialize(QJsonTreeItem *item, bool RwOnly) co
     } else {
 
     }
+
+    return {};
 }
 
 bool QJsonModel::deserialize(const QByteArray &arr)
